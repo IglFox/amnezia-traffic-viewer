@@ -146,8 +146,17 @@ def fetch_and_parse_data():
         with open(os.path.join(os.path.dirname(__file__), 'mock_dump.txt'), 'r', encoding='utf-8') as f:
             output = f.read()
     else:
-        cmd = f"sudo docker exec -i {DOCKER_CONTAINER} sh -c 'awg show all dump && echo \"---CLIENTS---\" && cat /opt/amnezia/awg/clientsTable 2>/dev/null || echo \"[]\"'"
-        output = run_ssh_command(cmd)
+        cmd1 = f"sudo docker exec -i {DOCKER_CONTAINER} awg show all dump"
+        output1 = run_ssh_command(cmd1)
+        
+        cmd2 = f"sudo docker exec -i {DOCKER_CONTAINER} cat /opt/amnezia/awg/clientsTable"
+        try:
+            output2 = run_ssh_command(cmd2)
+        except Exception as e:
+            print(f"Failed to fetch clientsTable: {e}")
+            output2 = "[]"
+            
+        output = output1 + "\n---CLIENTS---\n" + output2
         
     interface_info, peers = parse_awg_dump(output)
     
