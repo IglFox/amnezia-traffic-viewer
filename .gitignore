@@ -1,0 +1,18 @@
+.venv/
+__pycache__/
+*.pyc
+
+# Environment and Secrets
+.env
+backend/.env
+
+# Local Database and config state
+backend/metrics.db
+backend/names.json
+
+# Scratch files
+scratch_ssh.py
+
+# OS generated files
+.DS_Store
+Thumbs.db
