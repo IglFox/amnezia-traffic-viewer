@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  amnezia-monitor:
+    build: .
+    container_name: amnezia-traffic-monitor
+    restart: always
+    ports:
+      - "8338:8338"
+    volumes:
+      - ./backend/.env:/app/backend/.env
+      - ./backend/names.json:/app/backend/names.json

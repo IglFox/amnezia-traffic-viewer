@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amnezia WG Monitor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <header class="header">
+            <h1>Amnezia WG <span>Monitor</span></h1>
+            <div class="status-indicator">
+                <div class="pulse"></div>
+                <span id="connection-status">Live</span>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="dashboard-content">
+            
+            <!-- Bandwidth Load -->
+            <div class="stat-card" style="margin-bottom: 2rem; background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <div>
+                        <h3 style="margin: 0; color: var(--text-secondary); font-weight: 500;">Current Network Load</h3>
+                        <div class="stat-value" id="stat-bandwidth" style="margin-top: 0.5rem;">0.00 <span style="font-size: 1.2rem; color: var(--text-secondary);">Mbit/s</span></div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 0.5rem;">24h Average</div>
+                        <div class="stat-value" id="stat-avg-bandwidth" style="font-size: 1.2rem; font-weight: bold; color: var(--text-primary);">0.00 <span style="font-size: 0.9rem; color: var(--text-secondary);">Mbit/s</span></div>
+                    </div>
+                </div>
+                <div class="traffic-bar" style="height: 12px; background: rgba(255, 255, 255, 0.05); border-radius: 6px; overflow: hidden; position: relative;">
+                    <div id="bandwidth-bar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #10b981, #38bdf8); transition: width 1s ease; border-radius: 6px;"></div>
+                </div>
+            </div>
+
+            <!-- Stats Overview -->
+            <section class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-title">Total Users</div>
+                    <div class="stat-value" id="stat-total-users">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">Active Users</div>
+                    <div class="stat-value" id="stat-active-users">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">Traffic Sent</div>
+                    <div class="stat-value" id="stat-total-tx">0 B</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">Traffic Received</div>
+                    <div class="stat-value" id="stat-total-rx">0 B</div>
+                </div>
+            </section>
+
+            <!-- Traffic Chart -->
+            <section class="chart-section" style="margin-bottom: 3rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h2 style="margin-bottom: 0;">Traffic Histogram</h2>
+                    <select id="chart-group-toggle" style="padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-primary); outline: none;">
+                        <option value="device">Show by Device</option>
+                        <option value="group">Group by User</option>
+                    </select>
+                </div>
+                <div class="chart-container" style="background: var(--card-bg); backdrop-filter: blur(12px); border: 1px solid var(--border-color); border-radius: 16px; padding: 1.5rem; height: 350px;">
+                    <canvas id="trafficChart"></canvas>
+                </div>
+            </section>
+
+            <!-- Groups List -->
+            <section class="groups-section" style="margin-bottom: 3rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                    <h2 style="margin-bottom: 0;">Groups</h2>
+                </div>
+                <div class="users-grid" id="groups-grid">
+                    <!-- Group Cards will be injected here via JS -->
+                </div>
+            </section>
+
+            <!-- Users List -->
+            <section class="users-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                    <h2 style="margin-bottom: 0;">Connected Peers</h2>
+                    <div class="filters" style="display: flex; gap: 1rem;">
+                        <input type="text" id="search-input" placeholder="Search by name or IP..." style="padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-primary); outline: none;">
+                        <select id="status-filter" style="padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-primary); outline: none;">
+                            <option value="all">All Status</option>
+                            <option value="online">Online</option>
+                            <option value="offline">Offline</option>
+                        </select>
+                        <select id="sort-filter" style="padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-primary); outline: none;">
+                            <option value="traffic">Sort by Traffic</option>
+                            <option value="recent">Sort by Last Seen</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="users-grid" id="users-grid">
+                    <!-- User Cards will be injected here via JS -->
+                </div>
+            </section>
+        </main>
+    </div>
+    
+    <script src="/static/script.js"></script>
+</body>
+</html>

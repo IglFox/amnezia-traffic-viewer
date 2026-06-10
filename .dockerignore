@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+names.json
+scratch_ssh.py
+.git/
