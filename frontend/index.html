@@ -3,12 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Amnezia WG Monitor</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>Amnezia WG Monitor — Real-time VPN traffic dashboard</title>
+    <meta name="description" content="Monitor your AmneziaWG VPN server in real time. Track bandwidth, connected peers, traffic stats, and user groups from a single dashboard.">
+    <meta property="og:title" content="Amnezia WG Monitor">
+    <meta property="og:description" content="Real-time VPN traffic monitoring dashboard for AmneziaWG servers.">
+    <meta property="og:type" content="website">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect rx='18' width='100' height='100' fill='%230c0f14'/><text x='50' y='68' font-size='55' text-anchor='middle' fill='%232dd4a8'>A</text></svg>">
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
+    <a href="#main-content" class="skip-link">Skip to content</a>
+
     <div class="app-container">
         <header class="header">
             <h1>Amnezia WG <span>Monitor</span></h1>
@@ -18,94 +25,97 @@
             </div>
         </header>
 
-        <!-- Main Content -->
-        <main class="dashboard-content">
-            
-            <!-- Bandwidth Load -->
-            <div class="stat-card" style="margin-bottom: 2rem; background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <main id="main-content" class="dashboard-content">
+
+            <!-- Bandwidth load -->
+            <div class="bandwidth-card animate-in stagger-1">
+                <div class="bandwidth-header">
                     <div>
-                        <h3 style="margin: 0; color: var(--text-secondary); font-weight: 500;">Current Network Load</h3>
-                        <div class="stat-value" id="stat-bandwidth" style="margin-top: 0.5rem;">0.00 <span style="font-size: 1.2rem; color: var(--text-secondary);">Mbit/s</span></div>
+                        <div class="bandwidth-label">Current network load</div>
+                        <div class="bandwidth-value" id="stat-bandwidth">0.00 <span class="stat-unit">Mbit/s</span></div>
                     </div>
                     <div style="text-align: right;">
-                        <div style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 0.5rem;">24h Average</div>
-                        <div class="stat-value" id="stat-avg-bandwidth" style="font-size: 1.2rem; font-weight: bold; color: var(--text-primary);">0.00 <span style="font-size: 0.9rem; color: var(--text-secondary);">Mbit/s</span></div>
+                        <div class="bandwidth-avg-label">24h average</div>
+                        <div class="bandwidth-avg-value" id="stat-avg-bandwidth">0.00 <span class="stat-unit">Mbit/s</span></div>
                     </div>
                 </div>
-                <div class="traffic-bar" style="height: 12px; background: rgba(255, 255, 255, 0.05); border-radius: 6px; overflow: hidden; position: relative;">
-                    <div id="bandwidth-bar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #10b981, #38bdf8); transition: width 1s ease; border-radius: 6px;"></div>
+                <div class="traffic-bar-track">
+                    <div class="traffic-bar-fill" id="bandwidth-bar"></div>
                 </div>
             </div>
 
-            <!-- Stats Overview -->
-            <section class="stats-grid">
+            <!-- Stats overview -->
+            <section class="stats-grid animate-in stagger-2">
                 <div class="stat-card">
-                    <div class="stat-title">Total Users</div>
+                    <div class="stat-title">Total peers</div>
                     <div class="stat-value" id="stat-total-users">0</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-title">Active Users</div>
+                    <div class="stat-title">Active now</div>
                     <div class="stat-value" id="stat-active-users">0</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-title">Traffic Sent</div>
+                    <div class="stat-title">Traffic sent</div>
                     <div class="stat-value" id="stat-total-tx">0 B</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-title">Traffic Received</div>
+                    <div class="stat-title">Traffic received</div>
                     <div class="stat-value" id="stat-total-rx">0 B</div>
                 </div>
             </section>
 
-            <!-- Traffic Chart -->
-            <section class="chart-section" style="margin-bottom: 3rem;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                    <h2 style="margin-bottom: 0;">Traffic Histogram</h2>
-                    <select id="chart-group-toggle" style="padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-primary); outline: none;">
-                        <option value="device">Show by Device</option>
-                        <option value="group">Group by User</option>
+            <!-- Traffic chart -->
+            <section class="chart-section animate-in stagger-3">
+                <div class="section-bar">
+                    <h2 class="section-heading">Traffic histogram</h2>
+                    <select id="chart-group-toggle" class="filter-select">
+                        <option value="device">Show by device</option>
+                        <option value="group">Group by user</option>
                     </select>
                 </div>
-                <div class="chart-container" style="background: var(--card-bg); backdrop-filter: blur(12px); border: 1px solid var(--border-color); border-radius: 16px; padding: 1.5rem; height: 350px;">
+                <div class="chart-container">
                     <canvas id="trafficChart"></canvas>
                 </div>
             </section>
 
-            <!-- Groups List -->
-            <section class="groups-section" style="margin-bottom: 3rem;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
-                    <h2 style="margin-bottom: 0;">Groups</h2>
+            <!-- Groups -->
+            <section class="groups-section animate-in stagger-4">
+                <div class="section-bar">
+                    <h2 class="section-heading">Groups</h2>
                 </div>
                 <div class="users-grid" id="groups-grid">
-                    <!-- Group Cards will be injected here via JS -->
+                    <!-- Group cards injected via JS -->
                 </div>
             </section>
 
-            <!-- Users List -->
-            <section class="users-section">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
-                    <h2 style="margin-bottom: 0;">Connected Peers</h2>
-                    <div class="filters" style="display: flex; gap: 1rem;">
-                        <input type="text" id="search-input" placeholder="Search by name or IP..." style="padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-primary); outline: none;">
-                        <select id="status-filter" style="padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-primary); outline: none;">
-                            <option value="all">All Status</option>
+            <!-- Connected peers -->
+            <section class="users-section animate-in stagger-5">
+                <div class="section-bar">
+                    <h2 class="section-heading">Connected peers</h2>
+                    <div class="filters">
+                        <input type="text" id="search-input" class="filter-input" placeholder="Search by name or IP…">
+                        <select id="status-filter" class="filter-select">
+                            <option value="all">All status</option>
                             <option value="online">Online</option>
                             <option value="offline">Offline</option>
                         </select>
-                        <select id="sort-filter" style="padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-primary); outline: none;">
-                            <option value="traffic">Sort by Traffic</option>
-                            <option value="recent">Sort by Last Seen</option>
+                        <select id="sort-filter" class="filter-select">
+                            <option value="traffic">Sort by traffic</option>
+                            <option value="recent">Sort by last seen</option>
                         </select>
                     </div>
                 </div>
                 <div class="users-grid" id="users-grid">
-                    <!-- User Cards will be injected here via JS -->
+                    <!-- User cards injected via JS -->
                 </div>
             </section>
         </main>
+
+        <footer class="footer">
+            Amnezia WG Monitor · <a href="https://github.com/IglFox/amnezia-traffic-viewer" target="_blank" rel="noopener">Source</a>
+        </footer>
     </div>
-    
+
     <script src="/static/script.js"></script>
 </body>
 </html>

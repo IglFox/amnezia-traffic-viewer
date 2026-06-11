@@ -1,3 +1,15 @@
+/* ============================================================
+   Amnezia WG Monitor — Frontend Logic
+   ============================================================ */
+
+// --- SVG icon templates (Phosphor-style) ---
+const ICONS = {
+    pencil: `<svg viewBox="0 0 256 256"><path d="M224 76.57 179.43 32a16 16 0 0 0-22.63 0L36 152.77V220h67.23L224 98.83a16 16 0 0 0 0-22.26ZM93.66 204H52v-41.66L168 46.34 209.66 88Z" fill="currentColor"/></svg>`,
+    folder: `<svg viewBox="0 0 256 256"><path d="M216 72h-84.69L104 44.69A15.86 15.86 0 0 0 92.69 40H40a16 16 0 0 0-16 16v144.62A15.4 15.4 0 0 0 39.38 216H216.89A15.13 15.13 0 0 0 232 200.89V88a16 16 0 0 0-16-16Zm0 128H40V56h52.69l30.63 30.63.68.68H216Z" fill="currentColor"/></svg>`,
+};
+
+
+// --- Utility: format bytes ---
 function formatBytes(bytes, decimals = 2) {
     if (!+bytes) return '0 B';
     const k = 1024;
@@ -7,47 +19,121 @@ function formatBytes(bytes, decimals = 2) {
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
 }
 
+
+// --- Utility: relative time ---
 function timeSince(dateTimestamp) {
     if (!dateTimestamp) return "Never";
     const seconds = Math.floor(Date.now() / 1000) - dateTimestamp;
-    
-    let interval = seconds / 31536000;
-    if (interval > 1) return Math.floor(interval) + " years ago";
-    interval = seconds / 2592000;
-    if (interval > 1) return Math.floor(interval) + " months ago";
-    interval = seconds / 86400;
-    if (interval > 1) return Math.floor(interval) + " days ago";
-    interval = seconds / 3600;
-    if (interval > 1) return Math.floor(interval) + " hours ago";
-    interval = seconds / 60;
-    if (interval > 1) return Math.floor(interval) + " minutes ago";
-    return Math.floor(seconds) + " seconds ago";
+
+    const intervals = [
+        { label: 'year',   s: 31536000 },
+        { label: 'month',  s: 2592000 },
+        { label: 'day',    s: 86400 },
+        { label: 'hour',   s: 3600 },
+        { label: 'minute', s: 60 },
+    ];
+
+    for (const { label, s } of intervals) {
+        const count = Math.floor(seconds / s);
+        if (count >= 1) return `${count} ${label}${count > 1 ? 's' : ''} ago`;
+    }
+    return `${Math.floor(seconds)}s ago`;
 }
 
-function createUserCard(peer) {
+
+// --- Inline edit ---
+function startInlineEdit(publicKey, field, currentValue, triggerEl) {
+    // Prevent double-edits
+    if (triggerEl.closest('.user-card')?.querySelector('.inline-edit-input')) return;
+
+    const container = triggerEl.parentElement;
+    const originalContent = container.innerHTML;
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'inline-edit-input';
+    input.value = currentValue;
+    input.setAttribute('aria-label', `Edit ${field}`);
+
+    // Clear container, show input
+    container.innerHTML = '';
+    container.appendChild(input);
+    input.focus();
+    input.select();
+
+    async function save() {
+        const newValue = input.value.trim();
+        input.removeEventListener('blur', handleBlur);
+
+        if (newValue !== currentValue) {
+            try {
+                const body = { public_key: publicKey };
+                body[field] = newValue;
+                await fetch('/api/update_peer', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                });
+                fetchStats();
+            } catch (e) {
+                console.error('Update error', e);
+                container.innerHTML = originalContent;
+            }
+        } else {
+            container.innerHTML = originalContent;
+        }
+    }
+
+    function cancel() {
+        input.removeEventListener('blur', handleBlur);
+        container.innerHTML = originalContent;
+    }
+
+    function handleBlur() {
+        // Small delay to allow click events to fire first
+        setTimeout(save, 80);
+    }
+
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); save(); }
+        if (e.key === 'Escape') { e.preventDefault(); cancel(); }
+    });
+
+    input.addEventListener('blur', handleBlur);
+}
+
+
+// --- Card templates ---
+function createUserCard(peer, index) {
     const rx = peer.transfer_rx;
     const tx = peer.transfer_tx;
     const total = rx + tx;
-    
-    // Calculate percentages for the traffic bar
     const rxPercent = total > 0 ? (rx / total) * 100 : 50;
     const txPercent = total > 0 ? (tx / total) * 100 : 50;
 
     const statusClass = peer.is_online ? 'online' : 'offline';
     const statusText = peer.is_online ? 'Online' : 'Offline';
-    const displayName = peer.name ? peer.name : `${peer.public_key.substring(0, 16)}...`;
+    const displayName = peer.name || `${peer.public_key.substring(0, 16)}…`;
+    const escapedName = (peer.name || '').replace(/'/g, "\\'");
+    const escapedGroup = (peer.group || '').replace(/'/g, "\\'");
+
+    const staggerClass = index < 8 ? `animate-in stagger-${index + 1}` : 'animate-in stagger-8';
 
     return `
-        <div class="user-card">
+        <div class="user-card ${staggerClass}">
             <div class="user-header">
-                <div style="display: flex; flex-direction: column; gap: 4px;">
+                <div class="user-name-block">
                     <div class="user-id" title="${peer.public_key}">
-                        ${displayName}
-                        <span class="edit-btn" onclick="updatePeerField('${peer.public_key}', 'name', '${peer.name || ''}')" style="cursor: pointer; opacity: 0.5; margin-left: 5px; font-size: 0.8rem;" title="Rename">✏️</span>
+                        <span>${displayName}</span>
+                        <span class="edit-btn" onclick="startInlineEdit('${peer.public_key}', 'name', '${escapedName}', this)" title="Rename">
+                            ${ICONS.pencil}
+                        </span>
                     </div>
-                    <div class="user-group" style="font-size: 0.75rem; color: #38bdf8; display: flex; align-items: center; gap: 4px;">
-                        <span>📁 ${peer.group || 'Ungrouped'}</span>
-                        <span class="edit-btn" onclick="updatePeerField('${peer.public_key}', 'group', '${peer.group || ''}')" style="cursor: pointer; opacity: 0.5; font-size: 0.7rem;" title="Change Group">✏️</span>
+                    <div class="user-group-label">
+                        <span class="edit-btn" style="width:16px;height:16px;" onclick="startInlineEdit('${peer.public_key}', 'group', '${escapedGroup}', this)" title="Change group">
+                            ${ICONS.folder}
+                        </span>
+                        <span>${peer.group || 'Ungrouped'}</span>
                     </div>
                 </div>
                 <div class="user-status ${statusClass}">
@@ -55,44 +141,46 @@ function createUserCard(peer) {
                     ${statusText}
                 </div>
             </div>
-            
+
             <div class="user-details">
                 <div class="detail-row">
                     <span class="detail-label">IPs</span>
-                    <span>${peer.allowed_ips}</span>
+                    <span class="detail-value">${peer.allowed_ips}</span>
                 </div>
                 <div class="detail-row">
                     <span class="detail-label">Endpoint</span>
-                    <span>${peer.endpoint !== '(none)' ? peer.endpoint : 'Unknown'}</span>
+                    <span class="detail-value">${peer.endpoint !== '(none)' ? peer.endpoint : 'Unknown'}</span>
                 </div>
                 <div class="detail-row">
-                    <span class="detail-label">Last Seen</span>
-                    <span>${timeSince(peer.latest_handshake)}</span>
+                    <span class="detail-label">Last seen</span>
+                    <span class="detail-value">${timeSince(peer.latest_handshake)}</span>
                 </div>
-                
-                <div style="margin-top: 0.5rem;">
-                    <div class="detail-row" style="font-size: 0.75rem;">
-                        <span style="color: #10b981;">↓ ${formatBytes(rx)}</span>
-                        <span style="color: #38bdf8;">↑ ${formatBytes(tx)}</span>
-                    </div>
-                    <div class="traffic-bar-container">
-                        <div class="traffic-rx" style="width: ${rxPercent}%"></div>
-                        <div class="traffic-tx" style="width: ${txPercent}%"></div>
-                    </div>
+            </div>
+
+            <div>
+                <div class="traffic-stats-row">
+                    <span class="traffic-rx-label">↓ ${formatBytes(rx)}</span>
+                    <span class="traffic-tx-label">↑ ${formatBytes(tx)}</span>
+                </div>
+                <div class="traffic-bar-container">
+                    <div class="traffic-rx" style="width: ${rxPercent}%"></div>
+                    <div class="traffic-tx" style="width: ${txPercent}%"></div>
                 </div>
             </div>
         </div>
     `;
 }
 
+
+// --- Chart ---
 let trafficChartInstance = null;
-let chartGroupBy = 'device'; // 'device' or 'group'
+let chartGroupBy = 'device';
 
 function updateChart(peers) {
     const ctx = document.getElementById('trafficChart').getContext('2d');
-    
+
     let aggregatedData = [];
-    
+
     if (chartGroupBy === 'group') {
         const groupMap = {};
         peers.forEach(p => {
@@ -108,42 +196,44 @@ function updateChart(peers) {
         aggregatedData = peers.map(p => ({
             label: p.name || p.public_key.substring(0, 8),
             rx: p.transfer_rx,
-            tx: p.transfer_tx
+            tx: p.transfer_tx,
         }));
     }
-    
+
     aggregatedData.sort((a, b) => (b.rx + b.tx) - (a.rx + a.tx));
     const topData = aggregatedData.slice(0, 15);
-    
+
     const labels = topData.map(d => d.label);
-    const rxData = topData.map(d => d.rx / (1024 * 1024 * 1024)); // GB
-    const txData = topData.map(d => d.tx / (1024 * 1024 * 1024)); // GB
-    
+    const rxData = topData.map(d => d.rx / (1024 * 1024 * 1024));
+    const txData = topData.map(d => d.tx / (1024 * 1024 * 1024));
+
     if (trafficChartInstance) {
         trafficChartInstance.data.labels = labels;
         trafficChartInstance.data.datasets[0].data = rxData;
         trafficChartInstance.data.datasets[1].data = txData;
         trafficChartInstance.update();
     } else {
-        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.color = '#7a8599';
+        Chart.defaults.font.family = "'Geist', 'Inter', system-ui, sans-serif";
+
         trafficChartInstance = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: labels,
+                labels,
                 datasets: [
                     {
                         label: 'Received (GB)',
                         data: rxData,
-                        backgroundColor: '#10b981',
-                        borderRadius: 4
+                        backgroundColor: 'rgba(52, 211, 153, 0.75)',
+                        borderRadius: 4,
                     },
                     {
                         label: 'Sent (GB)',
                         data: txData,
-                        backgroundColor: '#38bdf8',
-                        borderRadius: 4
-                    }
-                ]
+                        backgroundColor: 'rgba(124, 160, 212, 0.7)',
+                        borderRadius: 4,
+                    },
+                ],
             },
             options: {
                 responsive: true,
@@ -151,61 +241,51 @@ function updateChart(peers) {
                 scales: {
                     x: {
                         stacked: true,
-                        grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                        grid: { color: 'rgba(255, 255, 255, 0.03)' },
+                        ticks: { font: { size: 11 } },
                     },
                     y: {
                         stacked: true,
-                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                        title: { display: true, text: 'Traffic (GB)', color: '#94a3b8' }
-                    }
+                        grid: { color: 'rgba(255, 255, 255, 0.03)' },
+                        title: { display: true, text: 'Traffic (GB)', color: '#7a8599' },
+                        ticks: { font: { size: 11 } },
+                    },
                 },
                 plugins: {
-                    legend: { position: 'top' },
+                    legend: {
+                        position: 'top',
+                        labels: { boxWidth: 12, padding: 20, font: { size: 12 } },
+                    },
                     tooltip: {
+                        backgroundColor: 'rgba(12, 15, 20, 0.9)',
+                        borderColor: 'rgba(255,255,255,0.08)',
+                        borderWidth: 1,
+                        titleFont: { weight: '600' },
                         callbacks: {
-                            label: function(context) {
-                                return context.dataset.label + ': ' + context.parsed.y.toFixed(2) + ' GB';
-                            }
-                        }
-                    }
-                }
-            }
+                            label: (context) =>
+                                `${context.dataset.label}: ${context.parsed.y.toFixed(2)} GB`,
+                        },
+                    },
+                },
+            },
         });
     }
 }
 
-async function updatePeerField(publicKey, field, currentValue) {
-    const promptText = field === 'name' ? "Enter device name:" : "Enter group name (e.g. 'John Doe'):";
-    const newValue = prompt(promptText, currentValue);
-    if (newValue !== null) {
-        try {
-            const body = { public_key: publicKey };
-            body[field] = newValue.trim();
-            
-            await fetch('/api/update_peer', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            });
-            fetchStats();
-        } catch(e) {
-            console.error("Update error", e);
-        }
-    }
-}
 
+// --- Groups renderer ---
 let currentPeersData = [];
 
 function renderGroups() {
     if (!currentPeersData) return;
     const groupMap = {};
     currentPeersData.forEach(p => {
-        if (!p.group) return; // Only show actual groups
+        if (!p.group) return;
         if (!groupMap[p.group]) groupMap[p.group] = [];
         groupMap[p.group].push(p);
     });
-    
-    const groupsHtml = Object.keys(groupMap).map(groupName => {
+
+    const groupsHtml = Object.keys(groupMap).map((groupName, idx) => {
         const peers = groupMap[groupName];
         const rx = peers.reduce((sum, p) => sum + p.transfer_rx, 0);
         const tx = peers.reduce((sum, p) => sum + p.transfer_tx, 0);
@@ -213,81 +293,88 @@ function renderGroups() {
         const total = rx + tx;
         const rxPercent = total > 0 ? (rx / total) * 100 : 50;
         const txPercent = total > 0 ? (tx / total) * 100 : 50;
-        
+
         const statusClass = isOnline ? 'online' : 'offline';
         const statusText = isOnline ? 'Online' : 'Offline';
-        
-        const peerNames = peers.map(p => p.name || p.public_key.substring(0,8)).join(', ');
+        const peerNames = peers.map(p => p.name || p.public_key.substring(0, 8)).join(', ');
+        const staggerClass = idx < 8 ? `animate-in stagger-${idx + 1}` : 'animate-in stagger-8';
 
         return `
-            <div class="user-card" style="border: 1px solid rgba(56, 189, 248, 0.3);">
+            <div class="user-card user-card--group ${staggerClass}">
                 <div class="user-header">
-                    <div class="user-id" style="color: #38bdf8;">📁 ${groupName} <span style="font-size: 0.8em; color: var(--text-secondary)">(${peers.length} devices)</span></div>
+                    <div class="user-name-block">
+                        <div class="user-id" style="color: var(--accent);">
+                            <span style="display:inline-flex;width:14px;height:14px;flex-shrink:0;color:var(--accent);">${ICONS.folder}</span>
+                            ${groupName}
+                            <span class="group-device-count">(${peers.length} device${peers.length > 1 ? 's' : ''})</span>
+                        </div>
+                    </div>
                     <div class="user-status ${statusClass}">
                         <div class="user-status-dot"></div>
                         ${statusText}
                     </div>
                 </div>
-                
-                <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1.5rem; line-height: 1.4; opacity: 0.8;">
-                    ${peerNames}
-                </div>
-                
+
+                <div class="group-members">${peerNames}</div>
+
                 <div class="user-details">
                     <div class="detail-row">
                         <span class="detail-label">Total RX</span>
-                        <span class="detail-value" style="color: #10b981;">↓ ${formatBytes(rx)}</span>
+                        <span class="detail-value traffic-rx-label">↓ ${formatBytes(rx)}</span>
                     </div>
                     <div class="detail-row">
                         <span class="detail-label">Total TX</span>
-                        <span class="detail-value" style="color: #38bdf8;">↑ ${formatBytes(tx)}</span>
+                        <span class="detail-value traffic-tx-label">↑ ${formatBytes(tx)}</span>
                     </div>
                 </div>
 
-                <div class="traffic-bar">
+                <div class="traffic-bar-container">
                     <div class="traffic-rx" style="width: ${rxPercent}%"></div>
                     <div class="traffic-tx" style="width: ${txPercent}%"></div>
                 </div>
             </div>
         `;
     }).join('');
-    
+
     document.getElementById('groups-grid').innerHTML = groupsHtml;
 }
 
+
+// --- Peers renderer ---
 function renderPeers() {
     if (!currentPeersData) return;
-    
+
     const searchVal = document.getElementById('search-input').value.toLowerCase();
     const statusVal = document.getElementById('status-filter').value;
     const sortVal = document.getElementById('sort-filter').value;
-    
+
     let filtered = currentPeersData.filter(peer => {
-        const nameMatch = (peer.name && peer.name.toLowerCase().includes(searchVal)) || 
-                          (peer.group && peer.group.toLowerCase().includes(searchVal)) || 
-                          peer.public_key.toLowerCase().includes(searchVal) || 
-                          peer.allowed_ips.includes(searchVal);
+        const nameMatch =
+            (peer.name && peer.name.toLowerCase().includes(searchVal)) ||
+            (peer.group && peer.group.toLowerCase().includes(searchVal)) ||
+            peer.public_key.toLowerCase().includes(searchVal) ||
+            peer.allowed_ips.includes(searchVal);
         if (!nameMatch) return false;
-        
+
         if (statusVal === 'online' && !peer.is_online) return false;
         if (statusVal === 'offline' && peer.is_online) return false;
-        
+
         return true;
     });
-    
+
     filtered.sort((a, b) => {
         if (sortVal === 'traffic') {
             return (b.transfer_rx + b.transfer_tx) - (a.transfer_rx + a.transfer_tx);
-        } else {
-            return b.latest_handshake - a.latest_handshake;
         }
+        return b.latest_handshake - a.latest_handshake;
     });
-    
+
     const grid = document.getElementById('users-grid');
-    grid.innerHTML = filtered.map(createUserCard).join('');
+    grid.innerHTML = filtered.map((peer, i) => createUserCard(peer, i)).join('');
 }
 
-// Add event listeners for filters
+
+// --- Filter listeners ---
 document.getElementById('search-input').addEventListener('input', renderPeers);
 document.getElementById('status-filter').addEventListener('change', renderPeers);
 document.getElementById('sort-filter').addEventListener('change', renderPeers);
@@ -299,56 +386,70 @@ document.getElementById('chart-group-toggle').addEventListener('change', (e) => 
     }
 });
 
-// Removed obsolete lastStats tracking
 
+// --- Skeleton helpers ---
+function showSkeletons() {
+    // Add skeleton class to key sections
+    document.querySelectorAll('.stat-card, .chart-container').forEach(el => {
+        el.classList.add('skeleton');
+    });
+}
+
+function hideSkeletons() {
+    document.querySelectorAll('.skeleton').forEach(el => {
+        el.classList.remove('skeleton');
+    });
+}
+
+
+// --- Data fetcher ---
 async function fetchStats() {
     try {
         const response = await fetch('/api/stats');
         if (!response.ok) throw new Error('Network response was not ok');
         const data = await response.json();
-        const now = Date.now();
-        
-        // Read Bandwidth from backend
+
+        hideSkeletons();
+
+        // Bandwidth
         const mbps = data.current_mbps || 0;
         const avg_mbps = data.avg_24h_mbps || 0;
-        
-        document.getElementById('stat-bandwidth').innerHTML = `${mbps.toFixed(2)} <span style="font-size: 1.2rem; color: var(--text-secondary);">Mbit/s</span>`;
-        document.getElementById('stat-avg-bandwidth').innerHTML = `${avg_mbps.toFixed(2)} <span style="font-size: 0.9rem; color: var(--text-secondary);">Mbit/s</span>`;
-        
+
+        document.getElementById('stat-bandwidth').innerHTML =
+            `${mbps.toFixed(2)} <span class="stat-unit">Mbit/s</span>`;
+        document.getElementById('stat-avg-bandwidth').innerHTML =
+            `${avg_mbps.toFixed(2)} <span class="stat-unit">Mbit/s</span>`;
+
         let percent = (mbps / 500) * 100;
         if (percent > 100) percent = 100;
-        
+
         const bar = document.getElementById('bandwidth-bar');
         bar.style.width = `${percent}%`;
-        
+
         if (percent > 90) {
             bar.style.background = 'linear-gradient(90deg, #f59e0b, #ef4444)';
         } else if (percent > 70) {
-            bar.style.background = 'linear-gradient(90deg, #10b981, #f59e0b)';
+            bar.style.background = 'linear-gradient(90deg, var(--accent), #f59e0b)';
         } else {
-            bar.style.background = 'linear-gradient(90deg, #10b981, #38bdf8)';
+            bar.style.background = 'linear-gradient(90deg, var(--accent), var(--tx-color))';
         }
 
-        // Update stats
+        // Stats
         document.getElementById('stat-total-users').textContent = data.stats.total_users;
         document.getElementById('stat-active-users').textContent = data.stats.active_users;
         document.getElementById('stat-total-tx').textContent = formatBytes(data.stats.total_tx);
         document.getElementById('stat-total-rx').textContent = formatBytes(data.stats.total_rx);
-        
-        // Save peers globally for filtering
+
+        // Save peers globally
         currentPeersData = data.peers;
-        
-        // Update user grid with filters
+
         renderPeers();
-        
-        // Update groups grid
         renderGroups();
-        
-        // Update Chart
         updateChart(data.peers);
-        
+
         document.getElementById('connection-status').textContent = 'Live';
-        document.querySelector('.pulse').style.backgroundColor = 'var(--status-online)';
+        document.querySelector('.pulse').style.backgroundColor = '';
+
     } catch (error) {
         console.error('Error fetching stats:', error);
         document.getElementById('connection-status').textContent = 'Offline';
@@ -356,21 +457,22 @@ async function fetchStats() {
     }
 }
 
-// Initialize app and polling
+
+// --- Init ---
 async function initApp() {
+    showSkeletons();
+
     try {
         const configResponse = await fetch('/api/config');
         const config = await configResponse.json();
-        
-        // Convert seconds to milliseconds
         const intervalMs = (config.update_interval_seconds || 10) * 1000;
-        
-        await fetchStats(); // Initial fetch
+
+        await fetchStats();
         setInterval(fetchStats, intervalMs);
     } catch (e) {
-        console.error("Failed to load config, falling back to 10 seconds interval");
+        console.error('Failed to load config, falling back to 10s interval');
         await fetchStats();
-        setInterval(fetchStats, 10 * 1000);
+        setInterval(fetchStats, 10_000);
     }
 }
 
