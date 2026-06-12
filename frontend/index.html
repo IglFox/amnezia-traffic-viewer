@@ -1,18 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Amnezia WG Monitor — Real-time VPN traffic dashboard</title>
-    <meta name="description" content="Monitor your AmneziaWG VPN server in real time. Track bandwidth, connected peers, traffic stats, and user groups from a single dashboard.">
+    <meta name="description"
+        content="Monitor your AmneziaWG VPN server in real time. Track bandwidth, connected peers, traffic stats, and user groups from a single dashboard.">
     <meta property="og:title" content="Amnezia WG Monitor">
     <meta property="og:description" content="Real-time VPN traffic monitoring dashboard for AmneziaWG servers.">
     <meta property="og:type" content="website">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect rx='18' width='100' height='100' fill='%230c0f14'/><text x='50' y='68' font-size='55' text-anchor='middle' fill='%232dd4a8'>A</text></svg>">
-    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect rx='18' width='100' height='100' fill='%230c0f14'/><text x='50' y='68' font-size='55' text-anchor='middle' fill='%232dd4a8'>A</text></svg>">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Outfit:wght@500;600;700&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
+
 <body>
     <a href="#main-content" class="skip-link">Skip to content</a>
 
@@ -32,11 +38,13 @@
                 <div class="bandwidth-header">
                     <div>
                         <div class="bandwidth-label">Current network load</div>
-                        <div class="bandwidth-value" id="stat-bandwidth">0.00 <span class="stat-unit">Mbit/s</span></div>
+                        <div class="bandwidth-value" id="stat-bandwidth">0.00 <span class="stat-unit">Mbit/s</span>
+                        </div>
                     </div>
                     <div style="text-align: right;">
                         <div class="bandwidth-avg-label">24h average</div>
-                        <div class="bandwidth-avg-value" id="stat-avg-bandwidth">0.00 <span class="stat-unit">Mbit/s</span></div>
+                        <div class="bandwidth-avg-value" id="stat-avg-bandwidth">0.00 <span
+                                class="stat-unit">Mbit/s</span></div>
                     </div>
                 </div>
                 <div class="traffic-bar-track">
@@ -112,10 +120,12 @@
         </main>
 
         <footer class="footer">
-            Amnezia WG Monitor · <a href="https://github.com/IglFox/amnezia-traffic-viewer" target="_blank" rel="noopener">Source</a>
+            Amnezia WG Monitor · <a href="https://github.com/IglFox/amnezia-traffic-viewer" target="_blank"
+                rel="noopener">Source</a>
         </footer>
     </div>
 
     <script src="/static/script.js"></script>
 </body>
+
 </html>

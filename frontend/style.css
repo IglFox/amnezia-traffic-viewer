@@ -5,37 +5,37 @@
 /* --- Tokens --- */
 :root {
     /* Backgrounds */
-    --bg-base:       #0c0f14;
-    --bg-surface:    rgba(22, 27, 38, 0.75);
+    --bg-base: #0c0f14;
+    --bg-surface: rgba(22, 27, 38, 0.75);
     --bg-surface-hover: rgba(32, 39, 54, 0.85);
-    --bg-elevated:   rgba(28, 35, 50, 0.9);
-    --bg-inset:      rgba(0, 0, 0, 0.25);
+    --bg-elevated: rgba(28, 35, 50, 0.9);
+    --bg-inset: rgba(0, 0, 0, 0.25);
 
     /* Borders */
-    --border-subtle:  rgba(255, 255, 255, 0.06);
+    --border-subtle: rgba(255, 255, 255, 0.06);
     --border-default: rgba(255, 255, 255, 0.1);
-    --border-active:  rgba(255, 255, 255, 0.18);
+    --border-active: rgba(255, 255, 255, 0.18);
 
     /* Text */
-    --text-primary:   #e8ecf2;
+    --text-primary: #e8ecf2;
     --text-secondary: #7a8599;
-    --text-tertiary:  #4f5a6b;
+    --text-tertiary: #4f5a6b;
 
     /* Accent — single warm teal */
-    --accent:         #2dd4a8;
-    --accent-dim:     rgba(45, 212, 168, 0.12);
-    --accent-glow:    rgba(45, 212, 168, 0.08);
+    --accent: #2dd4a8;
+    --accent-dim: rgba(45, 212, 168, 0.12);
+    --accent-glow: rgba(45, 212, 168, 0.08);
 
     /* Semantic */
-    --status-online:  #34d399;
+    --status-online: #34d399;
     --status-offline: #f87171;
-    --rx-color:       #34d399;
-    --tx-color:       #7ca0d4;
+    --rx-color: #34d399;
+    --tx-color: #7ca0d4;
 
     /* Shadows — tinted to match navy bg */
-    --shadow-sm:  0 1px 3px rgba(6, 10, 20, 0.5);
-    --shadow-md:  0 4px 16px rgba(6, 10, 20, 0.55);
-    --shadow-lg:  0 8px 32px rgba(6, 10, 20, 0.6);
+    --shadow-sm: 0 1px 3px rgba(6, 10, 20, 0.5);
+    --shadow-md: 0 4px 16px rgba(6, 10, 20, 0.55);
+    --shadow-lg: 0 8px 32px rgba(6, 10, 20, 0.6);
     --shadow-glow: 0 0 20px var(--accent-glow);
 
     /* Radii — varied scale */
@@ -182,9 +182,20 @@ h1 span {
 }
 
 @keyframes pulse {
-    0%   { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.6); }
-    70%  { transform: scale(1);   box-shadow: 0 0 0 7px rgba(52, 211, 153, 0); }
-    100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); }
+    0% {
+        transform: scale(0.9);
+        box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.6);
+    }
+
+    70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 7px rgba(52, 211, 153, 0);
+    }
+
+    100% {
+        transform: scale(0.9);
+        box-shadow: 0 0 0 0 rgba(52, 211, 153, 0);
+    }
 }
 
 
@@ -216,10 +227,15 @@ h1 span {
 }
 
 @media (max-width: 900px) {
-    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
 }
+
 @media (max-width: 500px) {
-    .stats-grid { grid-template-columns: 1fr; }
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 
@@ -390,7 +406,9 @@ h1 span {
 }
 
 @media (max-width: 768px) {
-    .users-grid { grid-template-columns: 1fr; }
+    .users-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 
@@ -546,8 +564,13 @@ h1 span {
     border-radius: 50%;
 }
 
-.user-status.online .user-status-dot { background: var(--status-online); }
-.user-status.offline .user-status-dot { background: var(--status-offline); }
+.user-status.online .user-status-dot {
+    background: var(--status-online);
+}
+
+.user-status.offline .user-status-dot {
+    background: var(--status-offline);
+}
 
 
 /* --- User detail rows --- */
@@ -604,8 +627,13 @@ h1 span {
     margin-top: 0.625rem;
 }
 
-.traffic-rx-label { color: var(--rx-color); }
-.traffic-tx-label { color: var(--tx-color); }
+.traffic-rx-label {
+    color: var(--rx-color);
+}
+
+.traffic-tx-label {
+    color: var(--tx-color);
+}
 
 
 /* --- Group card extras --- */
@@ -666,6 +694,7 @@ h1 span {
         opacity: 0;
         transform: translateY(16px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -676,14 +705,37 @@ h1 span {
     animation: fadeSlideUp var(--duration-slow) var(--ease-out) both;
 }
 
-.stagger-1 { animation-delay: 0ms; }
-.stagger-2 { animation-delay: 60ms; }
-.stagger-3 { animation-delay: 120ms; }
-.stagger-4 { animation-delay: 180ms; }
-.stagger-5 { animation-delay: 240ms; }
-.stagger-6 { animation-delay: 300ms; }
-.stagger-7 { animation-delay: 360ms; }
-.stagger-8 { animation-delay: 420ms; }
+.stagger-1 {
+    animation-delay: 0ms;
+}
+
+.stagger-2 {
+    animation-delay: 60ms;
+}
+
+.stagger-3 {
+    animation-delay: 120ms;
+}
+
+.stagger-4 {
+    animation-delay: 180ms;
+}
+
+.stagger-5 {
+    animation-delay: 240ms;
+}
+
+.stagger-6 {
+    animation-delay: 300ms;
+}
+
+.stagger-7 {
+    animation-delay: 360ms;
+}
+
+.stagger-8 {
+    animation-delay: 420ms;
+}
 
 
 /* --- Skeleton loader --- */
@@ -705,20 +757,23 @@ h1 span {
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(
-        90deg,
-        transparent 0%,
-        rgba(255, 255, 255, 0.03) 40%,
-        rgba(255, 255, 255, 0.06) 50%,
-        rgba(255, 255, 255, 0.03) 60%,
-        transparent 100%
-    );
+    background: linear-gradient(90deg,
+            transparent 0%,
+            rgba(255, 255, 255, 0.03) 40%,
+            rgba(255, 255, 255, 0.06) 50%,
+            rgba(255, 255, 255, 0.03) 60%,
+            transparent 100%);
     animation: shimmer 1.8s ease-in-out infinite;
 }
 
 @keyframes shimmer {
-    0%   { transform: translateX(-100%); }
-    100% { transform: translateX(100%); }
+    0% {
+        transform: translateX(-100%);
+    }
+
+    100% {
+        transform: translateX(100%);
+    }
 }
 
 

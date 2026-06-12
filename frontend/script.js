@@ -26,10 +26,10 @@ function timeSince(dateTimestamp) {
     const seconds = Math.floor(Date.now() / 1000) - dateTimestamp;
 
     const intervals = [
-        { label: 'year',   s: 31536000 },
-        { label: 'month',  s: 2592000 },
-        { label: 'day',    s: 86400 },
-        { label: 'hour',   s: 3600 },
+        { label: 'year', s: 31536000 },
+        { label: 'month', s: 2592000 },
+        { label: 'day', s: 86400 },
+        { label: 'hour', s: 3600 },
         { label: 'minute', s: 60 },
     ];
 
