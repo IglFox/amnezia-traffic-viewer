@@ -1,0 +1,22 @@
+[
+  {
+    "id": "server-1",
+    "name": "EU Server",
+    "ssh_host": "123.45.67.89",
+    "ssh_port": 22,
+    "ssh_user": "amnezia-monitor",
+    "ssh_password": "your_secure_password",
+    "ssh_key_path": "",
+    "docker_container": "amnezia-awg"
+  },
+  {
+    "id": "server-2",
+    "name": "US Server",
+    "ssh_host": "98.76.54.32",
+    "ssh_port": 22,
+    "ssh_user": "amnezia-monitor",
+    "ssh_password": "",
+    "ssh_key_path": "~/.ssh/id_rsa",
+    "docker_container": "amnezia-awg"
+  }
+]

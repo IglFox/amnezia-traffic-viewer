@@ -8,5 +8,5 @@ services:
     ports:
       - "8338:8338"
     volumes:
-      - ./backend/.env:/app/backend/.env
-      - ./backend/names.json:/app/backend/names.json
+      - ./backend/servers.json:/app/backend/servers.json
+      - ./backend/metrics.db:/app/backend/metrics.db

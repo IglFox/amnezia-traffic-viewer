@@ -5,6 +5,7 @@ __pycache__/
 # Environment and Secrets
 .env
 backend/.env
+backend/servers.json    
 
 # Local Database and config state
 backend/metrics.db

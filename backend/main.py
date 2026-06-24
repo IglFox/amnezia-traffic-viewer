@@ -13,34 +13,48 @@ from backend import database
 
 load_dotenv()
 
-app = FastAPI()
-
-SSH_HOST = os.getenv("SSH_HOST")
-SSH_PORT = int(os.getenv("SSH_PORT", "22"))
-SSH_USER = os.getenv("SSH_USER")
-SSH_PASSWORD = os.getenv("SSH_PASSWORD")
-SSH_KEY_PATH = os.getenv("SSH_KEY_PATH")
-DOCKER_CONTAINER = os.getenv("DOCKER_CONTAINER", "amnezia-awg")
+MOCK_DATA = os.getenv("MOCK_DATA", "false").lower() == "true"
 UPDATE_INTERVAL_SECONDS = int(os.getenv("UPDATE_INTERVAL_SECONDS", "10"))
 
-MOCK_DATA = os.getenv("MOCK_DATA", "false").lower() == "true"
-UPDATE_INTERVAL_MINUTES = int(os.getenv("UPDATE_INTERVAL_MINUTES", "1"))
+def load_servers():
+    servers_file = os.path.join(os.path.dirname(__file__), 'servers.json')
+    if os.path.exists(servers_file):
+        with open(servers_file, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    
+    # Fallback to .env
+    return [{
+        "id": "default",
+        "name": "Default Server",
+        "ssh_host": os.getenv("SSH_HOST"),
+        "ssh_port": int(os.getenv("SSH_PORT", "22")),
+        "ssh_user": os.getenv("SSH_USER"),
+        "ssh_password": os.getenv("SSH_PASSWORD"),
+        "ssh_key_path": os.getenv("SSH_KEY_PATH"),
+        "docker_container": os.getenv("DOCKER_CONTAINER", "amnezia-awg")
+    }]
 
-def run_ssh_command(cmd: str):
+SERVERS = load_servers()
+
+def run_ssh_command(server: dict, cmd: str):
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     try:
         connect_kwargs = {
-            "hostname": SSH_HOST,
-            "port": SSH_PORT,
-            "username": SSH_USER,
+            "hostname": server.get("ssh_host"),
+            "port": server.get("ssh_port", 22),
+            "username": server.get("ssh_user"),
             "look_for_keys": False,
             "allow_agent": False
         }
-        if SSH_PASSWORD:
-            connect_kwargs["password"] = SSH_PASSWORD
-        elif SSH_KEY_PATH and os.path.exists(os.path.expanduser(SSH_KEY_PATH)):
-            connect_kwargs["key_filename"] = os.path.expanduser(SSH_KEY_PATH)
+        
+        password = server.get("ssh_password")
+        key_path = server.get("ssh_key_path")
+        
+        if password:
+            connect_kwargs["password"] = password
+        elif key_path and os.path.exists(os.path.expanduser(key_path)):
+            connect_kwargs["key_filename"] = os.path.expanduser(key_path)
             
         client.connect(**connect_kwargs)
             
@@ -127,80 +141,94 @@ def parse_awg_dump(output_text: str):
 
 # Global state for cached data
 GLOBAL_DATA = {
-    "interface": {},
-    "stats": {"total_users": 0, "active_users": 0, "total_rx": 0, "total_tx": 0},
-    "peers": [],
-    "current_mbps": 0.0,
-    "avg_24h_mbps": 0.0
+    "servers": {} # server_id -> data
 }
 
-LAST_SERVER_TIME = None
-LAST_SERVER_RX = 0
-LAST_SERVER_TX = 0
-LAST_PEER_STATS = {} # pub_key -> {"rx": int, "tx": int}
+LAST_SERVER_TIME = {}
+LAST_SERVER_RX = {}
+LAST_SERVER_TX = {}
+LAST_PEER_STATS = {} # server_id -> pub_key -> {"rx": int, "tx": int}
 
 def fetch_and_parse_data():
     global LAST_SERVER_TIME, LAST_SERVER_RX, LAST_SERVER_TX, LAST_PEER_STATS, GLOBAL_DATA
     
-    if MOCK_DATA:
-        with open(os.path.join(os.path.dirname(__file__), 'mock_dump.txt'), 'r', encoding='utf-8') as f:
-            output = f.read()
-    else:
-        cmd1 = f"sudo docker exec -i {DOCKER_CONTAINER} awg show all dump"
-        output1 = run_ssh_command(cmd1)
+    for server in SERVERS:
+        server_id = server["id"]
+        server_name = server["name"]
         
-        cmd2 = f"sudo docker exec -i {DOCKER_CONTAINER} cat /opt/amnezia/awg/clientsTable"
-        try:
-            output2 = run_ssh_command(cmd2)
-        except Exception as e:
-            print(f"Failed to fetch clientsTable: {e}")
-            output2 = "[]"
-            
-        output = output1 + "\n---CLIENTS---\n" + output2
-        
-    interface_info, peers = parse_awg_dump(output)
-    
-    total_rx = sum(p["transfer_rx"] for p in peers)
-    total_tx = sum(p["transfer_tx"] for p in peers)
-    
-    now = time.time()
-    current_mbps = 0.0
-    
-    if LAST_SERVER_TIME is not None:
-        time_diff = now - LAST_SERVER_TIME
-        if time_diff > 0:
-            rx_diff = max(0, total_rx - LAST_SERVER_RX)
-            tx_diff = max(0, total_tx - LAST_SERVER_TX)
-            total_bytes = rx_diff + tx_diff
-            current_mbps = (total_bytes * 8) / (time_diff * 1000000)
-            
-            peers_deltas = []
-            for p in peers:
-                pk = p["public_key"]
-                last_p = LAST_PEER_STATS.get(pk, {"rx": p["transfer_rx"], "tx": p["transfer_tx"]})
-                drx = max(0, p["transfer_rx"] - last_p["rx"])
-                dtx = max(0, p["transfer_tx"] - last_p["tx"])
-                peers_deltas.append((pk, drx, dtx))
+        if MOCK_DATA:
+            with open(os.path.join(os.path.dirname(__file__), 'mock_dump.txt'), 'r', encoding='utf-8') as f:
+                output = f.read()
+        else:
+            docker_container = server.get("docker_container", "amnezia-awg")
+            cmd1 = f"sudo docker exec -i {docker_container} awg show all dump"
+            try:
+                output1 = run_ssh_command(server, cmd1)
                 
-            database.save_stats(current_mbps, total_rx, total_tx, peers_deltas)
+                cmd2 = f"sudo docker exec -i {docker_container} cat /opt/amnezia/awg/clientsTable"
+                try:
+                    output2 = run_ssh_command(server, cmd2)
+                except Exception as e:
+                    print(f"[{server_id}] Failed to fetch clientsTable: {e}")
+                    output2 = "[]"
+                    
+                output = output1 + "\n---CLIENTS---\n" + output2
+            except Exception as e:
+                print(f"[{server_id}] SSH error: {e}")
+                continue # Skip this server if error
             
-    # Update state for next tick
-    LAST_SERVER_TIME = now
-    LAST_SERVER_RX = total_rx
-    LAST_SERVER_TX = total_tx
-    for p in peers:
-        LAST_PEER_STATS[p["public_key"]] = {"rx": p["transfer_rx"], "tx": p["transfer_tx"]}
+        interface_info, peers = parse_awg_dump(output)
         
-    GLOBAL_DATA["interface"] = interface_info
-    GLOBAL_DATA["stats"] = {
-        "total_users": len(peers),
-        "active_users": sum(1 for p in peers if p["is_online"]),
-        "total_rx": total_rx,
-        "total_tx": total_tx
-    }
-    GLOBAL_DATA["peers"] = peers
-    GLOBAL_DATA["current_mbps"] = round(current_mbps, 2)
-    GLOBAL_DATA["avg_24h_mbps"] = database.get_24h_average_mbps()
+        total_rx = sum(p["transfer_rx"] for p in peers)
+        total_tx = sum(p["transfer_tx"] for p in peers)
+        
+        now = time.time()
+        current_mbps = 0.0
+        
+        if server_id in LAST_SERVER_TIME:
+            time_diff = now - LAST_SERVER_TIME[server_id]
+            if time_diff > 0:
+                rx_diff = max(0, total_rx - LAST_SERVER_RX.get(server_id, 0))
+                tx_diff = max(0, total_tx - LAST_SERVER_TX.get(server_id, 0))
+                total_bytes = rx_diff + tx_diff
+                current_mbps = (total_bytes * 8) / (time_diff * 1000000)
+                
+                peers_deltas = []
+                for p in peers:
+                    pk = p["public_key"]
+                    peer_stats_map = LAST_PEER_STATS.get(server_id, {})
+                    last_p = peer_stats_map.get(pk, {"rx": p["transfer_rx"], "tx": p["transfer_tx"]})
+                    drx = max(0, p["transfer_rx"] - last_p["rx"])
+                    dtx = max(0, p["transfer_tx"] - last_p["tx"])
+                    peers_deltas.append((pk, drx, dtx))
+                    
+                database.save_stats(server_id, current_mbps, total_rx, total_tx, peers_deltas)
+                
+        # Update state for next tick
+        LAST_SERVER_TIME[server_id] = now
+        LAST_SERVER_RX[server_id] = total_rx
+        LAST_SERVER_TX[server_id] = total_tx
+        
+        if server_id not in LAST_PEER_STATS:
+            LAST_PEER_STATS[server_id] = {}
+        for p in peers:
+            LAST_PEER_STATS[server_id][p["public_key"]] = {"rx": p["transfer_rx"], "tx": p["transfer_tx"]}
+            
+        GLOBAL_DATA["servers"][server_id] = {
+            "id": server_id,
+            "name": server_name,
+            "interface": interface_info,
+            "stats": {
+                "total_users": len(peers),
+                "active_users": sum(1 for p in peers if p["is_online"]),
+                "total_rx": total_rx,
+                "total_tx": total_tx
+            },
+            "peers": peers,
+            "current_mbps": round(current_mbps, 2),
+            "avg_24h_mbps": database.get_24h_average_mbps(server_id),
+            "history": database.get_recent_history(server_id, limit=20)
+        }
 
 def background_poller():
     while True:
@@ -224,77 +252,83 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Amnezia Traffic Viewer", lifespan=lifespan)
 
-@app.get("/api/stats")
-def get_stats():
-    return GLOBAL_DATA
-
 def get_mock_stats():
     now = int(time.time())
-    return {
-        "interface": {"name": "awg0", "public_key": "mock_pub_key=", "listen_port": "51820"},
-        "stats": {
-            "total_users": 4,
-            "active_users": 2,
-            "total_rx": 1500000000,
-            "total_tx": 2500000000
-        },
-        "peers": [
-            {
-                "public_key": "user1_pub_key=",
-                "allowed_ips": "10.8.0.2/32",
-                "endpoint": "192.168.1.100:54321",
-                "latest_handshake": now - 30,
-                "transfer_rx": 1000000000,
-                "transfer_tx": 1500000000,
-                "is_online": True
+    mock_data = {"servers": {}}
+    for server in SERVERS:
+        sid = server["id"]
+        mock_data["servers"][sid] = {
+            "id": sid,
+            "name": server["name"],
+            "interface": {"name": "awg0", "public_key": "mock_pub_key=", "listen_port": "51820"},
+            "stats": {
+                "total_users": 4,
+                "active_users": 2,
+                "total_rx": 1500000000,
+                "total_tx": 2500000000
             },
-            {
-                "public_key": "user2_pub_key=",
-                "allowed_ips": "10.8.0.3/32",
-                "endpoint": "192.168.1.101:54322",
-                "latest_handshake": now - 150,
-                "transfer_rx": 500000000,
-                "transfer_tx": 1000000000,
-                "is_online": True
-            },
-            {
-                "public_key": "user3_pub_key=",
-                "allowed_ips": "10.8.0.4/32",
-                "endpoint": "(none)",
-                "latest_handshake": now - 86400,
-                "transfer_rx": 0,
-                "transfer_tx": 0,
-                "is_online": False
-            },
-            {
-                "public_key": "user4_pub_key=",
-                "allowed_ips": "10.8.0.5/32",
-                "endpoint": "192.168.1.102:4444",
-                "latest_handshake": now - 3600,
-                "transfer_rx": 5000,
-                "transfer_tx": 2000,
-                "is_online": False
-            }
-        ]
-    }
+            "peers": [
+                {
+                    "public_key": f"user1_pub_key_{sid}=",
+                    "name": "Alice",
+                    "group": "Engineering",
+                    "allowed_ips": "10.8.0.2/32",
+                    "endpoint": "192.168.1.100:54321",
+                    "latest_handshake": now - 30,
+                    "transfer_rx": 1000000000,
+                    "transfer_tx": 1500000000,
+                    "is_online": True
+                },
+                {
+                    "public_key": f"user2_pub_key_{sid}=",
+                    "name": "Bob",
+                    "group": "Marketing",
+                    "allowed_ips": "10.8.0.3/32",
+                    "endpoint": "192.168.1.101:54322",
+                    "latest_handshake": now - 150,
+                    "transfer_rx": 500000000,
+                    "transfer_tx": 1000000000,
+                    "is_online": True
+                },
+                {
+                    "public_key": f"user3_pub_key_{sid}=",
+                    "name": "Charlie",
+                    "group": "Engineering",
+                    "allowed_ips": "10.8.0.4/32",
+                    "endpoint": "(none)",
+                    "latest_handshake": now - 86400,
+                    "transfer_rx": 0,
+                    "transfer_tx": 0,
+                    "is_online": False
+                },
+                {
+                    "public_key": f"user4_pub_key_{sid}=",
+                    "name": "David",
+                    "group": "",
+                    "allowed_ips": "10.8.0.5/32",
+                    "endpoint": "192.168.1.102:4444",
+                    "latest_handshake": now - 3600,
+                    "transfer_rx": 5000,
+                    "transfer_tx": 2000,
+                    "is_online": False
+                }
+            ],
+            "current_mbps": 12.5,
+            "avg_24h_mbps": 8.2,
+            "history": [
+                {"timestamp": now - 15, "mbps": 10.1},
+                {"timestamp": now - 10, "mbps": 15.2},
+                {"timestamp": now - 5, "mbps": 11.5},
+                {"timestamp": now, "mbps": 12.5}
+            ]
+        }
+    return mock_data
 
 @app.get("/api/stats")
 def get_stats():
     if MOCK_DATA:
         return get_mock_stats()
-
-    if not SSH_HOST or not SSH_USER:
-        raise HTTPException(status_code=500, detail="SSH credentials not configured in .env")
-        
-    try:
-        cmd = f"sudo docker exec -i {DOCKER_CONTAINER} sh -c 'awg show all dump && echo \"---CLIENTS---\" && cat /opt/amnezia/awg/clientsTable 2>/dev/null || echo \"[]\"'"
-        output = run_ssh_command(cmd)
-        return parse_awg_dump(output)
-    except Exception as e:
-        import traceback
-        print(f"ERROR in get_stats: {str(e)}")
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
+    return GLOBAL_DATA
 
 class UpdatePeerRequest(BaseModel):
     public_key: str
@@ -336,10 +370,16 @@ def get_config():
         "update_interval_seconds": UPDATE_INTERVAL_SECONDS
     }
 
-frontend_dir = os.path.join(os.path.dirname(__file__), '..', 'frontend')
-os.makedirs(frontend_dir, exist_ok=True)
-app.mount("/static", StaticFiles(directory=frontend_dir), name="static")
+frontend_dist_dir = os.path.join(os.path.dirname(__file__), '..', 'frontend', 'dist')
 
-@app.get("/")
-def serve_frontend():
-    return FileResponse(os.path.join(frontend_dir, 'index.html'))
+if os.path.exists(frontend_dist_dir):
+    app.mount("/static", StaticFiles(directory=os.path.join(frontend_dist_dir, 'assets')), name="static")
+
+@app.get("/{path:path}")
+def serve_frontend(path: str):
+    if path.startswith("api/") or path.startswith("static/"):
+        raise HTTPException(status_code=404)
+    file_path = os.path.join(frontend_dist_dir, path)
+    if os.path.exists(file_path) and os.path.isfile(file_path):
+        return FileResponse(file_path)
+    return FileResponse(os.path.join(frontend_dist_dir, 'index.html'))
