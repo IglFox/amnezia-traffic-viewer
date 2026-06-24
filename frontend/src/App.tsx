@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { Activity, Users, Server, ArrowUpRight, ArrowDownRight, Search, Menu, ArrowUpDown, ArrowDown, ArrowUp } from "lucide-react"
+import { Users, Server, ArrowUpRight, ArrowDownRight, Search, Menu, ArrowUpDown, ArrowDown, ArrowUp } from "lucide-react"
 import { motion, AnimatePresence } from "motion/react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -39,10 +39,33 @@ export default function App() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
   }
 
+  const NoiseOverlay = () => (
+    <div className="pointer-events-none fixed inset-0 z-50 h-full w-full opacity-[0.03]">
+      <svg className="absolute inset-0 h-full w-full" xmlns="http://www.w3.org/2000/svg">
+        <filter id="noiseFilter">
+          <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" />
+        </filter>
+        <rect width="100%" height="100%" filter="url(#noiseFilter)" />
+      </svg>
+    </div>
+  )
+
   if (!data) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background text-foreground dark">
-        <Activity className="w-8 h-8 animate-spin text-primary/50" />
+        <NoiseOverlay />
+        <div className="w-full max-w-7xl mx-auto p-4 md:p-8 space-y-8 animate-pulse opacity-20">
+          <div className="h-10 bg-secondary rounded-lg w-1/4 mb-2"></div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="md:col-span-2 h-64 bg-secondary rounded-xl"></div>
+            <div className="grid grid-cols-2 md:grid-cols-1 gap-4">
+              <div className="h-32 bg-secondary rounded-xl"></div>
+              <div className="h-32 bg-secondary rounded-xl"></div>
+            </div>
+          </div>
+          <div className="h-64 bg-secondary rounded-xl"></div>
+          <div className="h-96 bg-secondary rounded-xl"></div>
+        </div>
       </div>
     )
   }
@@ -134,10 +157,11 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground dark flex flex-col md:flex-row overflow-hidden font-sans">
+    <div className="min-h-screen bg-[#060608] text-foreground dark flex flex-col md:flex-row overflow-hidden font-sans relative selection:bg-primary/30">
+      <NoiseOverlay />
       
       {/* Mobile Header */}
-      <div className="md:hidden flex items-center justify-between p-4 border-b">
+      <div className="md:hidden flex items-center justify-between p-4 border-b border-border/20 relative z-10 bg-[#060608]/80 backdrop-blur-xl">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded bg-primary text-primary-foreground flex items-center justify-center font-bold">A</div>
           <span className="font-semibold tracking-tight">Amnezia</span>
@@ -154,10 +178,10 @@ export default function App() {
             initial={{ x: -300 }}
             animate={{ x: 0 }}
             exit={{ x: -300 }}
-            className="fixed md:static inset-y-0 left-0 z-50 w-64 border-r bg-card/50 backdrop-blur-xl flex flex-col"
+            className="fixed md:static inset-y-0 left-0 z-50 w-64 border-r border-border/10 bg-[#060608]/50 backdrop-blur-2xl flex flex-col"
           >
             <div className="p-6 hidden md:flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center font-bold shadow-[0_0_15px_rgba(255,255,255,0.3)]">A</div>
+              <div className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center font-bold shadow-[0_0_15px_rgba(255,255,255,0.2)]">A</div>
               <span className="font-semibold text-lg tracking-tight">Amnezia Monitor</span>
             </div>
             
@@ -167,15 +191,15 @@ export default function App() {
                 <button
                   key={s.id}
                   onClick={() => { setSelectedServer(s.id); setIsSidebarOpen(false); }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all active:scale-[0.98] ${
                     selectedServer === s.id 
-                      ? "bg-secondary text-secondary-foreground shadow-sm" 
-                      : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+                      ? "bg-secondary/80 text-secondary-foreground shadow-sm border border-white/5" 
+                      : "text-muted-foreground hover:bg-secondary/40 hover:text-foreground"
                   }`}
                 >
-                  <Server className="w-4 h-4" />
+                  <Server className="w-4 h-4 opacity-70" />
                   <span className="truncate">{s.name}</span>
-                  {s.current_mbps > 0 && <span className="ml-auto w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />}
+                  {s.current_mbps > 0 && <span className="ml-auto w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_5px_rgba(16,185,129,0.8)]" />}
                 </button>
               ))}
             </div>
@@ -187,7 +211,7 @@ export default function App() {
       </AnimatePresence>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto bg-[#0a0a0c] selection:bg-primary/30">
+      <main className="flex-1 overflow-y-auto relative z-10">
         {current ? (
           <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-8">
             
@@ -219,25 +243,25 @@ export default function App() {
                 initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.1 }}
-                className="md:col-span-2"
+                className="md:col-span-2 group"
               >
-                <Card className="h-full bg-gradient-to-br from-card to-card/50 border-border/50">
+                <Card className="h-full bg-[#0d0d12]/80 backdrop-blur-xl border-white/5 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_8px_30px_rgba(0,0,0,0.4)] hover:-translate-y-0.5 transition-transform duration-300">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider font-mono">Current Network Load</CardTitle>
+                    <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-widest font-mono">Current Network Load</CardTitle>
                   </CardHeader>
                   <CardContent className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                     <div>
                       <div className="flex items-baseline gap-2">
-                        <span className="text-5xl font-semibold tracking-tighter">{current.current_mbps}</span>
+                        <span className="text-5xl font-semibold tracking-tighter tabular-nums">{current.current_mbps}</span>
                         <span className="text-muted-foreground font-medium">Mbps</span>
                       </div>
                     </div>
                     <div className="text-right">
                       <p className="text-sm text-muted-foreground">24h Average</p>
-                      <p className="font-mono text-lg">{current.avg_24h_mbps} Mbps</p>
+                      <p className="font-mono text-lg tabular-nums">{current.avg_24h_mbps} Mbps</p>
                     </div>
                   </CardContent>
-                  <div className="px-6 pb-6 h-32">
+                  <div className="px-6 pb-6 h-32 opacity-80 group-hover:opacity-100 transition-opacity">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={chartData}>
                         <Line type="monotone" dataKey="mbps" stroke="#fff" strokeWidth={2} dot={false} isAnimationActive={false} />
@@ -254,30 +278,30 @@ export default function App() {
                 transition={{ delay: 0.2 }}
                 className="grid grid-cols-2 md:grid-cols-1 gap-4"
               >
-                <Card className="bg-card/40 border-border/50 backdrop-blur-sm">
+                <Card className="bg-[#0d0d12]/80 backdrop-blur-xl border-white/5 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_8px_30px_rgba(0,0,0,0.4)] hover:-translate-y-0.5 transition-transform duration-300">
                   <CardContent className="p-6 flex flex-col justify-center h-full">
                     <Users className="w-5 h-5 text-muted-foreground mb-3" />
-                    <p className="text-2xl font-semibold tracking-tight">{current.stats.active_users} / {current.stats.total_users}</p>
+                    <p className="text-2xl font-semibold tracking-tighter tabular-nums">{current.stats.active_users} / {current.stats.total_users}</p>
                     <p className="text-sm text-muted-foreground mt-1">Active Peers</p>
                   </CardContent>
                 </Card>
                 
-                <Card className="bg-card/40 border-border/50 backdrop-blur-sm">
+                <Card className="bg-[#0d0d12]/80 backdrop-blur-xl border-white/5 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_8px_30px_rgba(0,0,0,0.4)] hover:-translate-y-0.5 transition-transform duration-300">
                   <CardContent className="p-6 flex flex-col justify-center h-full">
                     <div className="grid grid-cols-2 gap-4 w-full">
                       <div className="flex flex-col">
                         <div className="flex items-center gap-1 text-emerald-500 mb-2">
                           <ArrowDownRight className="w-4 h-4" />
-                          <span className="text-xs font-mono uppercase">RX</span>
+                          <span className="text-xs font-mono tracking-widest uppercase">RX</span>
                         </div>
-                        <p className="font-mono font-medium">{formatBytes(current.stats.total_rx)}</p>
+                        <p className="font-mono font-medium tabular-nums">{formatBytes(current.stats.total_rx)}</p>
                       </div>
                       <div className="flex flex-col items-end">
                         <div className="flex items-center gap-1 text-blue-500 mb-2">
                           <ArrowUpRight className="w-4 h-4" />
-                          <span className="text-xs font-mono uppercase">TX</span>
+                          <span className="text-xs font-mono tracking-widest uppercase">TX</span>
                         </div>
-                        <p className="font-mono font-medium">{formatBytes(current.stats.total_tx)}</p>
+                        <p className="font-mono font-medium tabular-nums">{formatBytes(current.stats.total_tx)}</p>
                       </div>
                     </div>
                   </CardContent>
@@ -291,9 +315,9 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.25 }}
             >
-              <Card className="bg-card/30 border-border/50">
+              <Card className="bg-[#0d0d12]/80 backdrop-blur-xl border-white/5 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_8px_30px_rgba(0,0,0,0.4)] hover:-translate-y-0.5 transition-transform duration-300">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider font-mono">Top 10 Peers by Traffic</CardTitle>
+                  <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-widest font-mono">Top 10 Peers by Traffic</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="h-64 w-full">
@@ -317,7 +341,7 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
             >
-              <Card className="bg-card/30 border-border/50">
+              <Card className="bg-[#0d0d12]/80 backdrop-blur-xl border-white/5 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_8px_30px_rgba(0,0,0,0.4)]">
                 <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4">
                   <CardTitle className="text-lg">Connected Peers</CardTitle>
                   <div className="relative">
@@ -325,7 +349,7 @@ export default function App() {
                     <input 
                       type="text" 
                       placeholder="Search peers..." 
-                      className="pl-9 pr-4 py-2 text-sm bg-secondary/50 border-border/50 rounded-md focus:outline-none focus:ring-1 focus:ring-primary w-full sm:w-64"
+                      className="pl-9 pr-4 py-2 text-sm bg-secondary/30 border border-white/5 rounded-md focus:outline-none focus:ring-1 focus:ring-primary w-full sm:w-64 transition-all hover:bg-secondary/50"
                       value={search}
                       onChange={e => setSearch(e.target.value)}
                     />
@@ -333,7 +357,7 @@ export default function App() {
                 </CardHeader>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm text-left">
-                    <thead className="text-xs text-muted-foreground uppercase bg-secondary/20 border-y border-border/50">
+                    <thead className="text-xs text-muted-foreground uppercase bg-secondary/20 border-y border-white/5">
                       <tr>
                         <th className="px-6 py-3 font-medium cursor-pointer hover:bg-secondary/40 transition-colors" onClick={() => handleSort('status')}>
                           <div className="flex items-center">Status <SortIcon field="status" /></div>
@@ -355,26 +379,40 @@ export default function App() {
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-border/20">
-                      {sortedPeers.map((p: any) => (
-                        <tr key={p.public_key} className="hover:bg-secondary/10 transition-colors">
-                          <td className="px-6 py-4">
-                            {p.is_online ? (
-                              <Badge variant="default" className="bg-emerald-500/20 text-emerald-500 border-transparent shadow-none">Online</Badge>
-                            ) : (
-                              <Badge variant="secondary" className="bg-muted text-muted-foreground">Offline</Badge>
-                            )}
+                    <tbody className="divide-y divide-white/5">
+                      {sortedPeers.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="px-6 py-16 text-center text-muted-foreground bg-secondary/5">
+                            <div className="flex flex-col items-center justify-center gap-3">
+                              <div className="w-12 h-12 rounded-full bg-secondary/50 flex items-center justify-center mb-2">
+                                <Users className="w-6 h-6 opacity-40" />
+                              </div>
+                              <p className="text-base font-medium text-foreground">No peers found</p>
+                              <p className="text-sm">Try adjusting your search or add a peer on your server.</p>
+                            </div>
                           </td>
-                          <td className="px-6 py-4">
-                            <div className="font-medium">{p.name || "Unnamed Peer"}</div>
-                            <div className="text-xs text-muted-foreground font-mono mt-1 w-32 truncate" title={p.public_key}>{p.public_key}</div>
-                          </td>
-                          <td className="px-6 py-4 font-mono text-xs text-muted-foreground">{p.allowed_ips}</td>
-                          <td className="px-6 py-4 text-right font-mono text-xs text-muted-foreground">{formatBytes(p.transfer_rx)}</td>
-                          <td className="px-6 py-4 text-right font-mono text-xs text-muted-foreground">{formatBytes(p.transfer_tx)}</td>
-                          <td className="px-6 py-4 text-right font-mono text-xs text-primary font-medium">{formatBytes(p.total_transfer)}</td>
                         </tr>
-                      ))}
+                      ) : (
+                        sortedPeers.map((p: any) => (
+                          <tr key={p.public_key} className="hover:bg-secondary/20 transition-colors cursor-default">
+                            <td className="px-6 py-4">
+                              {p.is_online ? (
+                                <Badge variant="default" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 shadow-none">Online</Badge>
+                              ) : (
+                                <Badge variant="secondary" className="bg-muted text-muted-foreground border-transparent">Offline</Badge>
+                              )}
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="font-medium">{p.name || "Unnamed Peer"}</div>
+                              <div className="text-xs text-muted-foreground font-mono mt-1 w-32 truncate" title={p.public_key}>{p.public_key}</div>
+                            </td>
+                            <td className="px-6 py-4 font-mono text-xs text-muted-foreground">{p.allowed_ips}</td>
+                            <td className="px-6 py-4 text-right font-mono text-xs text-muted-foreground tabular-nums">{formatBytes(p.transfer_rx)}</td>
+                            <td className="px-6 py-4 text-right font-mono text-xs text-muted-foreground tabular-nums">{formatBytes(p.transfer_tx)}</td>
+                            <td className="px-6 py-4 text-right font-mono text-xs text-primary font-medium tabular-nums">{formatBytes(p.total_transfer)}</td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
